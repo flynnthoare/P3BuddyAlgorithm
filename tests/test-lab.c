@@ -50,6 +50,24 @@ void check_buddy_pool_full(struct buddy_pool *pool)
  */
 void check_buddy_pool_empty(struct buddy_pool *pool)
 {
+  for (size_t i = 0; i <= pool->kval_m; i++)
+  {
+    if (pool->avail[i].next != &pool->avail[i]) {
+      fprintf(stderr,
+              "! Non-empty free list at index %zu (2^%zu bytes):\n",
+              i, i);
+      struct avail *cur = pool->avail[i].next;
+      while (cur != &pool->avail[i]) {
+        fprintf(stderr,
+                "  -> Block at %p: tag=%d kval=%d next=%p prev=%p\n",
+                (void *)cur, cur->tag, cur->kval,
+                (void *)cur->next, (void *)cur->prev);
+        cur = cur->next;
+      }
+    }
+  }
+  
+  
   //An empty pool should have all values 0-(kval) as empty
   for (size_t i = 0; i <= pool->kval_m; i++)
     {
