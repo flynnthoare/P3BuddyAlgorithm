@@ -112,23 +112,32 @@ void test_buddy_malloc_one_large(void)
   //the internal details of buddy_init.
   size_t ask = bytes - sizeof(struct avail);
   void *mem = buddy_malloc(&pool, ask);
+  printf("made it here 1");
   assert(mem != NULL);
+  printf("made it here 2");
 
   //Move the pointer back and make sure we got what we expected
   struct avail *tmp = (struct avail *)mem - 1;
+  printf("made it here 3");
   assert(tmp->kval == MIN_K);
+  printf("made it here 4");
   assert(tmp->tag == BLOCK_RESERVED);
+  printf("made it here 5");
   check_buddy_pool_empty(&pool);
 
   //Verify that a call on an empty tool fails as expected and errno is set to ENOMEM.
   void *fail = buddy_malloc(&pool, 5);
+  printf("made it here 6");
   assert(fail == NULL);
+  printf("made it here 7");
   assert(errno = ENOMEM);
+  printf("made it here 8");
 
   //Free the memory and then check to make sure everything is OK
   buddy_free(&pool, mem);
   check_buddy_pool_full(&pool);
   buddy_destroy(&pool);
+  printf("made it here 9");
 }
 
 /**

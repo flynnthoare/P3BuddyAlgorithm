@@ -31,7 +31,8 @@
  */
  size_t btok(size_t bytes)
  {
-     size_t total = bytes + sizeof(struct avail);
+     //size_t total = bytes + sizeof(struct avail);
+     size_t total = bytes;
      size_t k = SMALLEST_K;
  
      while ((UINT64_C(1) << k) < total) {
@@ -39,9 +40,15 @@
      }
  
      fprintf(stderr, "btok: input=%zu, returns k=%zu\n", bytes, k);
-     return (k < MIN_K) ? MIN_K : k;
+     return k;
  }
 
+ /**
+   * Find the buddy of a given pointer and kval relative to the base address we got from mmap
+   * @param pool The memory pool to work on (needed for the base addresses)
+   * @param buddy The memory block that we want to find the buddy for
+   * @return A pointer to the buddy
+   */
 struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
 {
     // Convert pointers to raw numbers
@@ -64,13 +71,18 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
         return NULL;
     }
 
+    
+    printf("btok for buddy_malloc:\n");
     size_t req_k = btok(size);
     size_t k = req_k;
 
-    // Find the first available block
+    // Find the first avail index that has a block available
     while (k < pool->kval_m && pool->avail[k].next == &pool->avail[k]) {
         k++;
     }
+
+    printf("k val after searching for avail block: %zu\n", k);
+    printf("req_k val: %zu\n", req_k);
     
     if (pool->avail[k].next == &pool->avail[k]) {
         errno = ENOMEM;
@@ -106,25 +118,16 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
     while (k > req_k) {
         k--;
     
-        // We are going to return this block → don't split at this level!
-        if (k == req_k) {
-            break;
-        }
-    
-        uintptr_t addr = (uintptr_t)block;
-        uintptr_t buddy_addr = addr + (UINT64_C(1) << k);
-        struct avail *buddy = (struct avail *)buddy_addr;
+        block->kval = k;
+        struct avail *buddy = buddy_calc(pool, block);
     
         buddy->tag = BLOCK_AVAIL;
         buddy->kval = k;
     
-        // Insert buddy into avail[k] free list
         buddy->next = pool->avail[k].next;
         buddy->prev = &pool->avail[k];
         pool->avail[k].next->prev = buddy;
         pool->avail[k].next = buddy;
-    
-        block->kval = k;
     }
     
 
@@ -208,6 +211,7 @@ void buddy_init(struct buddy_pool *pool, size_t size)
     if (size == 0)
         kval = DEFAULT_K;
     else
+        printf("Btok for buddy_init:\n");
         kval = btok(size);
 
     if (kval < MIN_K)
