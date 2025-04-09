@@ -62,7 +62,7 @@ struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
     uintptr_t buddy_offset = offset ^ (UINT64_C(1) << buddy->kval);
 
     // Add offset back to base and convert to struct avail*
-    return (struct avail *)(base_addr + buddy_offset);
+    return (struct avail *)(base_addr + buddy_offset) + 1;
 }
 
 void *buddy_malloc(struct buddy_pool *pool, size_t size)
@@ -71,9 +71,11 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
         return NULL;
     }
 
-    
+    // add header to total
+    size_t total = size + sizeof(struct avail);
+
     printf("btok for buddy_malloc:\n");
-    size_t req_k = btok(size);
+    size_t req_k = btok(total);
     size_t k = req_k;
 
     // Find the first avail index that has a block available
@@ -93,7 +95,7 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
 
     if (block == &pool->avail[k] || block->tag != BLOCK_AVAIL) {
         errno = ENOMEM;
-        return NULL; // Safety guard against grabbing the sentinel
+        return NULL; // guard against grabbing the sentinel
     }
 
     // Unlink from free list
@@ -134,20 +136,6 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
     block->tag = BLOCK_RESERVED;
     fprintf(stderr, "Returned block has kval=%d\n", block->kval);
     return (void *)(block + 1);  // skip header
-
-
-    //get the kval for the requested size with enough room for the tag and kval fields
-
-    //R1 Find a block
-
-    //There was not enough memory to satisfy the request thus we need to set error and return NULL
-
-    //R2 Remove from list;
-
-    //R3 Split required?
-
-    //R4 Split the block
-
 }
 
 void buddy_free(struct buddy_pool *pool, void *ptr)
@@ -156,7 +144,7 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
         return;
     }
 
-    // Step 2: Get the header
+    //Get the header
     struct avail *block = ((struct avail *)ptr) - 1;
 
     size_t k = block->kval;
