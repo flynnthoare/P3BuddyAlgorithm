@@ -31,15 +31,13 @@
  */
  size_t btok(size_t bytes)
  {
-     //size_t total = bytes + sizeof(struct avail);
      size_t total = bytes;
      size_t k = SMALLEST_K;
  
      while ((UINT64_C(1) << k) < total) {
          k++;
      }
- 
-     fprintf(stderr, "btok: input=%zu, returns k=%zu\n", bytes, k);
+
      return k;
  }
 
@@ -62,7 +60,7 @@ struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
     uintptr_t buddy_offset = offset ^ (UINT64_C(1) << buddy->kval);
 
     // Add offset back to base and convert to struct avail*
-    return (struct avail *)(base_addr + buddy_offset) + 1;
+    return (struct avail *)(base_addr + buddy_offset);
 }
 
 void *buddy_malloc(struct buddy_pool *pool, size_t size)
@@ -93,9 +91,10 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
 
     struct avail *block = pool->avail[k].next;
 
+    // guard against grabbing the sentinel
     if (block == &pool->avail[k] || block->tag != BLOCK_AVAIL) {
         errno = ENOMEM;
-        return NULL; // guard against grabbing the sentinel
+        return NULL; 
     }
 
     // Unlink from free list
@@ -113,7 +112,7 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
     if (k == req_k) {
         block->tag = BLOCK_RESERVED;
         fprintf(stderr, "Returned block has kval=%d\n", block->kval);
-        return (void *)(block + 1);
+        return (void *)(block + 1); //skip header
     }
 
     // Split block down to req_k
@@ -162,7 +161,7 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
         buddy->prev->next = buddy->next;
         buddy->next->prev = buddy->prev;
 
-        // Decide who becomes the parent block (lower address wins)
+        // Decide who becomes the parent block (lower address)
         if (buddy < block) {
             block = buddy;
         }
@@ -171,7 +170,7 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
         block->kval = k;
     }
 
-    // Insert merged block into free list for size 2^k
+    // Insert merged block into free list
     block->tag = BLOCK_AVAIL;
     block->next = pool->avail[k].next;
     block->prev = &pool->avail[k];
@@ -187,19 +186,19 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
  * @param size the new size requested
  * @return void* pointer to the new user memory
  */
-void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
-{
-    //Required for Grad Students
-    //Optional for Undergrad Students
-}
+// void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
+// {
+//     //Required for Grad Students
+//     //Optional for Undergrad Students
+// }
 
 void buddy_init(struct buddy_pool *pool, size_t size)
 {
+    printf("Btok for buddy_init:\n");
     size_t kval = 0;
     if (size == 0)
         kval = DEFAULT_K;
     else
-        printf("Btok for buddy_init:\n");
         kval = btok(size);
 
     if (kval < MIN_K)
@@ -260,20 +259,20 @@ void buddy_destroy(struct buddy_pool *pool)
  * This function can be useful to visualize the bits in a block. This can
  * help when figuring out the buddy_calc function!
  */
-static void printb(unsigned long int b)
-{
-     size_t bits = sizeof(b) * 8;
-     unsigned long int curr = UINT64_C(1) << (bits - 1);
-     for (size_t i = 0; i < bits; i++)
-     {
-          if (b & curr)
-          {
-               printf("1");
-          }
-          else
-          {
-               printf("0");
-          }
-          curr >>= 1L;
-     }
-}
+// static void printb(unsigned long int b)
+// {
+//      size_t bits = sizeof(b) * 8;
+//      unsigned long int curr = UINT64_C(1) << (bits - 1);
+//      for (size_t i = 0; i < bits; i++)
+//      {
+//           if (b & curr)
+//           {
+//                printf("1");
+//           }
+//           else
+//           {
+//                printf("0");
+//           }
+//           curr >>= 1L;
+//      }
+// }

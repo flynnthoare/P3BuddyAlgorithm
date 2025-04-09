@@ -176,6 +176,28 @@ void test_btok_boundaries(void) {
   assert(k3 == 7); 
 }
 
+void test_buddy_calc(void) {
+  fprintf(stderr, "-> Testing buddy_calc correctness\n");
+
+  struct buddy_pool pool;
+  buddy_init(&pool, UINT64_C(1) << MIN_K);
+
+  // Allocate two blocks that will be buddies
+  void *a = buddy_malloc(&pool, 64);
+  void *b = buddy_malloc(&pool, 64);
+
+  struct avail *block_a = ((struct avail *)a) - 1;
+  struct avail *block_b = ((struct avail *)b) - 1;
+
+  struct avail *calc_buddy = buddy_calc(&pool, block_a);
+  struct avail *expected_buddy = (block_a < block_b) ? block_b : block_a;
+
+  // Check that buddy_calc returns the other block
+  assert(calc_buddy == (expected_buddy)); // returning adr at head (not data)
+
+  buddy_destroy(&pool);
+}
+
 void test_malloc_minimum_block(void) {
   struct buddy_pool pool;
   size_t size = UINT64_C(1) << MIN_K;
@@ -199,7 +221,7 @@ void test_malloc_multiple_small_blocks(void) {
   size_t pool_size = UINT64_C(1) << MIN_K;
   buddy_init(&pool, pool_size);
 
-  // Allocate an initial array to store pointers (expandable)
+  // Allocate an initial array to store pointers
   size_t capacity = 128;
   size_t count = 0;
   void **allocations = malloc(sizeof(void *) * capacity);
@@ -239,13 +261,13 @@ void test_malloc_mixed_sizes(void) {
   size_t pool_size = UINT64_C(1) << MIN_K;
   buddy_init(&pool, pool_size);
 
-  // Set up dynamic array for pointers
+  // Set up array for pointers
   size_t capacity = 128;
   size_t count = 0;
   void **allocations = malloc(sizeof(void *) * capacity);
   size_t *sizes = malloc(sizeof(size_t) * capacity);  // track sizes
 
-  // Define a small set of varied allocation sizes (user sizes)
+  // Define a small set of allocation sizes
   size_t requests[] = {
     8, 24, 32, 64, 100, 128, 200, 400, 512, 800
   };
@@ -272,13 +294,13 @@ void test_malloc_mixed_sizes(void) {
 
   TEST_ASSERT(count > 0); // Allocated at least one block
 
-  // Optionally validate the header of each block
+  // validate the header of each block
   for (size_t i = 0; i < count; i++) {
     struct avail *header = ((struct avail *)allocations[i]) - 1;
     TEST_ASSERT_EQUAL_UINT16(BLOCK_RESERVED, header->tag);
   }
 
-  // Free in reverse order (helps test merging)
+  // Free in reverse order
   for (ssize_t i = (ssize_t)count - 1; i >= 0; i--) {
     buddy_free(&pool, allocations[i]);
   }
@@ -301,8 +323,9 @@ int main(void) {
   RUN_TEST(test_buddy_malloc_one_byte);
   RUN_TEST(test_buddy_malloc_one_large);
   RUN_TEST(test_btok_boundaries);
-  //RUN_TEST(test_malloc_minimum_block);
-  //RUN_TEST(test_malloc_multiple_small_blocks);
-  //RUN_TEST(test_malloc_mixed_sizes);
+  RUN_TEST(test_buddy_calc);
+  RUN_TEST(test_malloc_minimum_block);
+  RUN_TEST(test_malloc_multiple_small_blocks);
+  RUN_TEST(test_malloc_mixed_sizes);
 return UNITY_END();
 }
