@@ -71,8 +71,6 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
 
     // add header to total
     size_t total = size + sizeof(struct avail);
-
-    printf("btok for buddy_malloc:\n");
     size_t req_k = btok(total);
     size_t k = req_k;
 
@@ -178,23 +176,8 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
     pool->avail[k].next = block;
 }
 
-/**
- * @brief This is a simple version of realloc.
- *
- * @param poolThe memory pool
- * @param ptr  The user memory
- * @param size the new size requested
- * @return void* pointer to the new user memory
- */
-// void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
-// {
-//     //Required for Grad Students
-//     //Optional for Undergrad Students
-// }
-
 void buddy_init(struct buddy_pool *pool, size_t size)
 {
-    printf("Btok for buddy_init:\n");
     size_t kval = 0;
     if (size == 0)
         kval = DEFAULT_K;
@@ -255,24 +238,3 @@ void buddy_destroy(struct buddy_pool *pool)
 
 #define UNUSED(x) (void)x
 
-/**
- * This function can be useful to visualize the bits in a block. This can
- * help when figuring out the buddy_calc function!
- */
-// static void printb(unsigned long int b)
-// {
-//      size_t bits = sizeof(b) * 8;
-//      unsigned long int curr = UINT64_C(1) << (bits - 1);
-//      for (size_t i = 0; i < bits; i++)
-//      {
-//           if (b & curr)
-//           {
-//                printf("1");
-//           }
-//           else
-//           {
-//                printf("0");
-//           }
-//           curr >>= 1L;
-//      }
-// }
